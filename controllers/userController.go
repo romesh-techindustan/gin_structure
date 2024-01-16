@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"zucora/backend/config"
 	"zucora/backend/database"
 	"zucora/backend/models"
+	"zucora/backend/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -104,26 +106,28 @@ func UserLogin(c *gin.Context) {
 		return
 	}
 	// Generate access and refresh tokens
-	accessToken, err := GenerateAccessToken((user.ID))
+	tokenParams := &services.TokenParams{
+		Config:     config.GetConfig(),
+		JWT_SECRET: []byte(os.Getenv("JWT_SECRET_KEY")),
+		USER_ID:    user.ID,
+	}
+	accessToken, err := services.GenerateAccessToken(*tokenParams)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate access token"})
 		return
 	}
 
-	// refreshToken, err := GenerateRefreshToken()
-	// if err != nil {
-	// 	c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate refresh token"})
-	// 	return
-	// }
-
 	otp := GenerateTOTPCode(os.Getenv("SECRET_KEY"))
 	database.Db.Model(&user).Update("otp", otp)
-	SendEmail(user.Email, "Your One Time Password : "+otp)
+	emailParams := &services.EmailParams{
+		To:   user.Email,
+		Code: otp,
+	}
+	services.Send2FAOTP(*emailParams)
 	c.JSON(http.StatusOK, gin.H{
 		"response":     "Login Successfull",
 		"access_token": accessToken,
-		// "refresh_token": refreshToken,
-		"otp": otp,
+		"otp":          otp,
 	})
 }
 
@@ -131,7 +135,12 @@ func ResetPassword(c *gin.Context) {
 	var email string
 	c.Bind(&email)
 	url := "http://localhost:3000/changedpwd"
-	SendEmail(email, "Click the link to reset your password :"+url)
+	emailParams := &services.EmailParams{
+		To:               email,
+		PasswordResetURL: url,
+	}
+
+	services.SendResetPasswordEmail(*emailParams)
 }
 
 type ChangePasswordRequest struct {
@@ -234,15 +243,14 @@ func GetUserDetail(c *gin.Context) {
 	}
 }
 
-func Logout (c *gin.Context) {
+func Logout(c *gin.Context) {
 	// Clear the cookie
 	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie("Authorization", "", -1, "", "", false, true)
-	
 
 	// Redirect to the home page
 	c.JSON(200, gin.H{
-		"message":"User Log Out",
+		"message": "User Log Out",
 	})
-	
+
 }

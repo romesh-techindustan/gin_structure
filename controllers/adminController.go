@@ -3,8 +3,11 @@ package controllers
 import (
 	"fmt"
 	"net/http"
+	"os"
+	"zucora/backend/config"
 	"zucora/backend/database"
 	"zucora/backend/models"
+	"zucora/backend/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -77,7 +80,12 @@ func SuperAdminLogin(c *gin.Context) {
 		return
 	}
 	// Generate access and refresh tokens
-	accessToken, err := GenerateAccessToken((user.ID))
+	tokenParams := &services.TokenParams{
+		Config:     config.GetConfig(),
+		JWT_SECRET: []byte(os.Getenv("JWT_SECRET_KEY")),
+		USER_ID:    user.ID,
+	}
+	accessToken, err := services.GenerateAccessToken(*tokenParams)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate access token"})
 		return

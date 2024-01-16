@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"zucora/backend/controllers"
@@ -16,8 +17,16 @@ func init() {
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
+
+	syncdb := flag.Bool("syncdb", false, "sync database boolean param")
+	flag.Parse()
+
 	database.ConnectDB()
-	database.SyncDb()
+
+	if *syncdb {
+		database.SyncDb()
+	}
+
 }
 
 func main() {
@@ -42,7 +51,7 @@ func main() {
 	}
 	// Group for user routes
 	userGroup := router.Group("/user")
-	userGroup.Use( middleware.AuthRequired) // Custom middleware to check user role
+	userGroup.Use(middleware.AuthRequired) // Custom middleware to check user role
 	{
 		userGroup.POST("/verify2fa", controllers.VerifyTwoFA)
 		userGroup.GET("/:id", controllers.GetUserDetail)
