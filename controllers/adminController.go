@@ -73,7 +73,6 @@ func SuperAdminLogin(c *gin.Context) {
 	}
 	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
 	if err != nil {
-		// fmt.Println("aaaaaaaa")
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"message": "incorrect password",
 		})
@@ -81,9 +80,9 @@ func SuperAdminLogin(c *gin.Context) {
 	}
 	// Generate access and refresh tokens
 	tokenParams := &services.TokenParams{
-		Config:     config.GetConfig(),
-		JWT_SECRET: []byte(os.Getenv("JWT_SECRET_KEY")),
-		USER_ID:    user.ID,
+		TokenExpiration: config.GetConfig().TokenExpiration,
+		JWTSecret:       []byte(os.Getenv("JWT_SECRET_KEY")),
+		UserID:          user.ID,
 	}
 	accessToken, err := services.GenerateAccessToken(*tokenParams)
 	if err != nil {

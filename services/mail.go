@@ -1,43 +1,56 @@
 package services
 
 import (
-	"fmt"
-
 	"gopkg.in/gomail.v2"
 )
 
 type EmailParams struct {
 	To               string
+	From             string
+	Subject          string
 	Code             string
 	PasswordResetURL string
+	SMTPConfig       struct {
+		Host     string
+		Port     int
+		UserName string
+		Password string
+	}
 }
 
-func Send2FAOTP(EP EmailParams) {
-	m := gomail.NewMessage()
-	m.SetHeader("From", "romeshkhaba@gmail.com")
-	m.SetHeader("To", EP.To)
-	m.SetHeader("Subject", "OTP for two factor authentication")
-	m.SetBody("text/plain", "Your One Time Password : "+EP.Code)
-
-	d := gomail.NewDialer("smtp.gmail.com", 587, "romeshkhaba@gmail.com", "xjlwvvlqfkzqhbvi")
-
-	if err := d.DialAndSend(m); err != nil {
-		panic(err)
-	}
-	fmt.Println("Email Sent successfully")
+type IMail interface {
+	Send2FAOTP() error
+	SendResetPasswordEmail() error
 }
 
-func SendResetPasswordEmail(EP EmailParams) {
-	m := gomail.NewMessage()
-	m.SetHeader("From", "romeshkhaba@gmail.com")
-	m.SetHeader("To", EP.To)
-	m.SetHeader("Subject", "OTP for two factor authentication")
-	m.SetBody("text/plain", "Click the link to reset your password :"+EP.PasswordResetURL)
+func Send2FAOTP(EP EmailParams) error {
+	message := gomail.NewMessage()
+	message.SetHeader("From", EP.From)
+	message.SetHeader("To", EP.To)
+	message.SetHeader("Subject", EP.Subject)
+	message.SetBody("text/plain", "Your One Time Password : "+EP.Code)
 
-	d := gomail.NewDialer("smtp.gmail.com", 587, "romeshkhaba@gmail.com", "xjlwvvlqfkzqhbvi")
+	dialer := gomail.NewDialer(
+		EP.SMTPConfig.Host,
+		EP.SMTPConfig.Port,
+		EP.SMTPConfig.UserName,
+		EP.SMTPConfig.Password)
+	err := dialer.DialAndSend(message)
+	return err
+}
 
-	if err := d.DialAndSend(m); err != nil {
-		panic(err)
-	}
-	fmt.Println("Email Sent successfully")
+func SendResetPasswordEmail(EP EmailParams) error {
+	message := gomail.NewMessage()
+	message.SetHeader("From", EP.From)
+	message.SetHeader("To", EP.To)
+	message.SetHeader("Subject", EP.Subject)
+	message.SetBody("text/plain", "Click the link to reset your password :"+EP.PasswordResetURL)
+
+	dialer := gomail.NewDialer(
+		EP.SMTPConfig.Host,
+		EP.SMTPConfig.Port,
+		EP.SMTPConfig.UserName,
+		EP.SMTPConfig.Password)
+	err := dialer.DialAndSend(message)
+	return err
 }
