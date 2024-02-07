@@ -10,3 +10,9 @@ type ChangePasswordRequest struct {
 	Password        string `json:"password1"`
 	ConfirmPassword string `json:"password"`
 }
+
+type CreateAdmin struct {
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}

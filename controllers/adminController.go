@@ -7,6 +7,7 @@ import (
 	"zucora/backend/config"
 	"zucora/backend/database"
 	"zucora/backend/models"
+	"zucora/backend/requests"
 	"zucora/backend/services"
 
 	"github.com/gin-gonic/gin"
@@ -15,38 +16,40 @@ import (
 )
 
 func CreateSuperAdmin(c *gin.Context) {
-	var body struct {
-		Name     string
-		Email    string
-		Password string
-	}
-	if c.BindJSON(&body) != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Failed to read Body",
-		})
-	}
+	var input requests.CreateAdmin
 	var user models.User
-	result := database.Db.Where(&models.User{Email: body.Email}).First(&user)
-	if result.RowsAffected != 0 {
+
+	if c.BindJSON(&input) != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"eror": "User already exists",
-		})
-	} else {
-		password := generatePassword(6)
-		hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(password), 10)
-		body.Password = string(hashedPassword)
-		user = models.User{ID: uuid.New().String(), Name: body.Name, Email: body.Email, Password: body.Password, IsSuperuser: true}
-		result = database.Db.Create(&user)
-		fmt.Println("password", password)
-		if result.Error != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Unable to create user!",
-			})
-		}
-		c.JSON(http.StatusOK, gin.H{
-			"result": user,
+			"error": "Failed to read body",
 		})
 	}
+	result := database.Db.Where(&models.User{Email: input.Email}).First(&user)
+	if result.RowsAffected != 0 {
+		c.JSON(http.StatusConflict, gin.H{
+			"error": "User already exists",
+		})
+	}
+	password := generatePassword(6)
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(password), 10)
+	input.Password = string(hashedPassword)
+	user = models.User{
+		ID:          uuid.New().String(),
+		Name:        input.Name,
+		Email:       input.Email,
+		Password:    input.Password,
+		IsSuperuser: true,
+	}
+	result = database.Db.Create(&user)
+	fmt.Println("password", password)
+	if result.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Unable to create user!",
+		})
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"result": user,
+	})
 }
 
 func SuperAdminLogin(c *gin.Context) {
@@ -73,6 +76,7 @@ func SuperAdminLogin(c *gin.Context) {
 	}
 	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
 	if err != nil {
+		fmt.Println(err)
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"message": "incorrect password",
 		})

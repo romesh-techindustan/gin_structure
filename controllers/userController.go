@@ -87,7 +87,6 @@ func UserLogin(c *gin.Context) {
 	// Access the data from the JSON body
 	email := loginRequest.Email
 	password := loginRequest.Password
-	fmt.Println(email)
 	if email == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Please enter an email address"})
 		return
@@ -99,7 +98,6 @@ func UserLogin(c *gin.Context) {
 	}
 	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
 	if err != nil {
-		// fmt.Println("aaaaaaaa")
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"message": "incorrect password",
 		})
@@ -117,7 +115,7 @@ func UserLogin(c *gin.Context) {
 		return
 	}
 
-	otp := GenerateTOTPCode(os.Getenv("SECRET_KEY"))
+	otp := GenerateTOTPCode(os.Getenv("OTP_SECRET_KEY"))
 	database.Db.Model(&user).Update("otp", otp)
 	emailParams := &services.EmailParams{
 		To:   user.Email,
