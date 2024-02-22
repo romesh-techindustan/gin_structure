@@ -6,7 +6,8 @@ import (
 	"log"
 	"zucora/backend/controllers"
 	"zucora/backend/database"
-	"zucora/backend/middleware"
+	"zucora/backend/repository"
+	"zucora/backend/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -18,7 +19,7 @@ func init() {
 		log.Fatal("Error loading .env file")
 	}
 
-	syncdb := flag.Bool("syncdb", false, "sync database boolean param")
+	syncdb := flag.Bool("syncdb", true, "sync database boolean param")
 	flag.Parse()
 
 	database.ConnectDB()
@@ -32,29 +33,17 @@ func init() {
 func main() {
 	fmt.Println("Hello, world.")
 	router := gin.Default()
+	db := database.ConnectDB()
+	userRepository := repository.NewUserRepository(db)
 
-	router.POST("/create/admin", controllers.CreateSuperAdmin)
-	router.POST("/admin/login", controllers.SuperAdminLogin)
-	router.POST("/user/login", controllers.UserLogin)
+	// Initialize services
+	userService := services.NewUserService(userRepository)
 
-	//Common API functions
-	router.PUT("/changedpwd", middleware.AuthRequired, controllers.ChangePassword)
-	router.GET("/logout", controllers.Logout)
-	// Group for superadmin routes
-	adminGroup := router.Group("/admin")
-	adminGroup.Use(middleware.AuthRequired) // Custom middleware to check admin role
-	{
-		adminGroup.POST("/create/user", controllers.CreateUser)
-		adminGroup.GET("/users", controllers.GetAllUsers)
-		adminGroup.GET("/user/:id", controllers.GetUserDetail)
-		adminGroup.DELETE("/user/:id", controllers.DeleteUser)
-	}
-	// Group for user routes
-	userGroup := router.Group("/user")
-	userGroup.Use(middleware.AuthRequired) // Custom middleware to check user role
-	{
-		userGroup.POST("/verify2fa", controllers.VerifyTwoFA)
-		userGroup.GET("/:id", controllers.GetUserDetail)
-	}
+	// Initialize controllers
+	userController := controllers.NewUserController(userService)
+
+	router.POST("/create", userController.RegisterUser)
+	router.GET("/create/:id", userController.GetUserByID)
+
 	router.Run()
 }
